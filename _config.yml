@@ -61,19 +61,19 @@ navs:
     label: Home
 
   -
-    href: /open-source
+    href: /open-source.html
     label: Open-Source
 
   -
-    href: /blog
+    href: /blog.html
     label: Blog
 
   -
-    href: /bookmark
+    href: /bookmark.html
     label: Bookmark
 
   -
-    href: /about
+    href: /about.html
     label: About
 
 # Sidebar to show popular repo
@@ -87,7 +87,7 @@ analytics :
 
 
 # For about.html. Fell free to create your own!
-skill_software_keywords: [Java, C, C++, Qt, Python, MySQL, Oracle, SQLite, PL/SQL, Design Patterns]
-skill_j2ee_keywords: [Spring, Struct, Hibernet, MyBatis, JSP]
-skill_web_keywords: [HTML, CSS, JS, JQuery, Ajax, AngularJS, NodeJS, ExpressJS, MongoDB, Redis, PHP, Symfony, Boostrap]
-skill_mobile_app_keywords: [Android, Sketch UI Desgin]
+skill_software_keywords: [Java, Python, MySQL, Scala , Hadoop , Spark]
+skill_j2ee_keywords: [Spring, SpringMvc, MyBatis, JSP , Spring Boot , Spring Cloud]
+skill_web_keywords: [HTML, CSS, JS, JQuery, Ajax, NodeJS, Vuejs, MongoDB, Redis, PHP,  Boostrap]
+skill_mobile_app_keywords: []
