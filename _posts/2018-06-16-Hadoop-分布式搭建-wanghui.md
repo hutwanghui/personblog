@@ -250,7 +250,10 @@ $wget http://apache.claz.org/hadoop/common/hadoop-2.7.6/hadoop-2.7.6.tar.gz
     12655 Jps
 ```
 坑：注意要关闭iptables
+
 ![image](http://kkxcx.hutwanghui.club/keng3.png)
+
 至此，hadoop分布式搭建就完成了，可以通过hdfs命令和hdfsadmin命令对hdfs进行操作
+
 ![image](http://kkxcx.hutwanghui.club/hdfs-complated.png)
 
