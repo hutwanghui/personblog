@@ -42,7 +42,7 @@ ERRORorg.apache.hadoop.hdfs.server.namenode.NameNode:java.lang.IllegalArgumentEx
         slave1机的外网IP  hadoop-slave2
         slave2机的外网IP  hadoop-slave1
 ```
-> 免密登陆ssh
+### 3、免密登陆ssh
 
 首先完成本机无密码访问，下面以master节点举例
 
