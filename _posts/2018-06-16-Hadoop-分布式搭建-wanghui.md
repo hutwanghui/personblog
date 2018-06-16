@@ -1,3 +1,10 @@
+---
+layout: post
+title: Hadoop-2.7.6分布式搭建
+category: 大数据
+tags: [Hadoop, Linux]
+---
+
 Hadoop的搭建有三种方式，单机、伪分布式版、完全分布式。这篇文章将介绍如何搭建完全分布式的hadoop集群，以内网服务器和腾讯云服务器进行部署
 ## 基础环境
 ### 1、服务器配置
