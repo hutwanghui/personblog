@@ -1,9 +1,9 @@
 GIT
   remote: git://github.com/flori/json.git
-  revision: 4688035c424a26a8d943c261170988f1b788fa56
-  branch: v2.1.0
+  revision: 09fabeb03e73ed88dc8ce8f19d76ac59e51dae20
+  branch: v2.0.4
   specs:
-    json (2.1.0)
+    json (2.0.4)
 
 GEM
   remote: https://rubygems.org/
@@ -188,4 +188,4 @@ DEPENDENCIES
   rough
 
 BUNDLED WITH
-   1.16.2
+   1.16.3

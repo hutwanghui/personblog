@@ -5,9 +5,285 @@
     <description>hutwanghui's blog</description>
     <link>http://www.hutwanghui.club/</link>
     <atom:link href="http://www.hutwanghui.club/feed.xml" rel="self" type="application/rss+xml"/>
-    <pubDate>Wed, 13 Jun 2018 23:50:07 +0800</pubDate>
-    <lastBuildDate>Wed, 13 Jun 2018 23:50:07 +0800</lastBuildDate>
+    <pubDate>Sun, 22 Jul 2018 12:30:19 +0800</pubDate>
+    <lastBuildDate>Sun, 22 Jul 2018 12:30:19 +0800</lastBuildDate>
     <generator>Jekyll v3.8.3</generator>
+    
+      <item>
+        <title>Hadoop-2.7.6分布式搭建</title>
+        <description>&lt;p&gt;Hadoop的搭建有三种方式，单机、伪分布式版、完全分布式。这篇文章将介绍如何搭建完全分布式的hadoop集群，以内网服务器和腾讯云服务器进行部署&lt;/p&gt;
+&lt;h2 id=&quot;基础环境&quot;&gt;基础环境&lt;/h2&gt;
+&lt;h3 id=&quot;1服务器配置&quot;&gt;1、服务器配置&lt;/h3&gt;
+&lt;ul&gt;
+  &lt;li&gt;
+    &lt;p&gt;三台内网服务器配置：&lt;/p&gt;
+
+    &lt;ul&gt;
+      &lt;li&gt;系统:ubuntu 18.04；&lt;/li&gt;
+      &lt;li&gt;内存：2G；&lt;/li&gt;
+      &lt;li&gt;硬盘：100G&lt;/li&gt;
+      &lt;li&gt;ip地址：
+        &lt;ul&gt;
+          &lt;li&gt;10.195.208.59 hadoop-master&lt;/li&gt;
+          &lt;li&gt;10.195.208.86 hadoop-slave2&lt;/li&gt;
+          &lt;li&gt;10.195.208.44 hadoop-slave1&lt;/li&gt;
+        &lt;/ul&gt;
+      &lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;三台腾讯云服务器配置：&lt;/p&gt;
+    &lt;ul&gt;
+      &lt;li&gt;系统：centos 7.4；&lt;/li&gt;
+      &lt;li&gt;内存：2G；&lt;/li&gt;
+      &lt;li&gt;硬盘：50G&lt;/li&gt;
+      &lt;li&gt;ip地址：三台服务器的云主机地址&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h3 id=&quot;2host配置&quot;&gt;2、host配置&lt;/h3&gt;
+&lt;blockquote&gt;
+  &lt;p&gt;$vim /etc/hostname&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;修改各节点机器的主机名。&lt;/li&gt;
+  &lt;li&gt;坑：在hadoop中的主机名千万不要以_命名！！！否则报
+ERRORorg.apache.hadoop.hdfs.server.namenode.NameNode:java.lang.IllegalArgumentException: Does not contain a valid host;port authority&lt;/li&gt;
+  &lt;li&gt;修改完成后reboot，依次修改slave1、2
+    &lt;blockquote&gt;
+      &lt;p&gt;$vim /etc/hosts&lt;/p&gt;
+    &lt;/blockquote&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;pre&gt;&lt;code&gt;        #内网服务器配置
+        127.0.0.1     localhost
+        10.195.208.59 hadoop-master
+        10.195.208.86 hadoop-slave2
+        10.195.208.44 hadoop-slave1
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;hr /&gt;
+
+&lt;pre&gt;&lt;code&gt;        #腾讯云服务器配置，以master举例，slave节点自己本身的ip地址为自己的内网IP
+        127.0.0.1     localhost
+        master机的内网IP  hadoop-master
+        slave1机的外网IP  hadoop-slave2
+        slave2机的外网IP  hadoop-slave1
+&lt;/code&gt;&lt;/pre&gt;
+&lt;h3 id=&quot;3免密登陆ssh&quot;&gt;3、免密登陆ssh&lt;/h3&gt;
+
+&lt;p&gt;首先完成本机无密码访问，下面以master节点举例&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;    $ssh-keyen -t rsa
+    #将公钥追加到.ssh下的authorized_keys文件，这个文件用于存放用户的公钥
+    cat ~/.ssh/id_rsa.pub &amp;gt;&amp;gt; ~/.ssh/authorized_keys
+    #赋予权限，必须是600，因为不能让所有者之外的用户对authorized_keys文件有写权限
+    chmod 600 .ssh/authorized_keys
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;此时便可以通过ssh对本机进行无密码访问，依次对slave1、2进行相同的设置&lt;/p&gt;
+
+&lt;p&gt;然后完成主机之间的无密码访问，只需要把自己机器上生成的公钥远程复制到其他节点，这样每次访问都可以通过私钥和公钥匹配来完成权限认证，下面以master节点无密码访问slave1、2举例&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;    $scp root@hadoop-master:/root/.ssh/id_rsa.pub /root/
+    将公钥追加到authorized_keys文件
+    $cat id_rsa.pub &amp;gt;&amp;gt; .ssh/authorized_keys
+    $rm -rf  id_rsa.pub
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;此时便可以在master机器上使用ssh hadoop-slave1进行无密码登陆了&lt;/p&gt;
+
+&lt;p&gt;最后需要完成slave机器无密登陆master，与上述流程无异&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;    $scp root@hadoop-slave1:/root/.ssh/id_rsa.pub /root/
+    $cat id_rsa.pub &amp;gt;&amp;gt; .ssh/authorized_keys
+    $rm -rf  id_rsa.pub
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;至此，便完成了主从的无密登录&lt;/p&gt;
+
+&lt;h2 id=&quot;hadoop环境的搭建&quot;&gt;Hadoop环境的搭建&lt;/h2&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;安装统一版本的jdk并配置环境变量&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;pre&gt;&lt;code&gt;    yum -y install java-1.8.0-openjdk*
+    $vim /etc/profile
+    export JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk
+    export PATH=$JAVA_HOME/bin:$PATH
+    export CLASSPATH=.:$JAVA_HOME/lib/dt.jar:$JAVA_HOME/lib/tools.jar
+    $source /etc/profile
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;配置hadoop-master上的hadoop环境&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;hadoop版本：2.7.6&lt;/p&gt;
+
+&lt;h3 id=&quot;1--下载hadoop安装包解压并创建基本目录&quot;&gt;1.  下载hadoop安装包，解压并创建基本目录&lt;/h3&gt;
+
+&lt;pre&gt;&lt;code&gt;$wget http://apache.claz.org/hadoop/common/hadoop-2.7.6/hadoop-2.7.6.tar.gz
+    $tar -xzvf  hadoop-2.7.6.tar.gz    -C /usr/local 
+    $mv  hadoop-2.7.6  hadoop
+&lt;/code&gt;&lt;/pre&gt;
+&lt;h3 id=&quot;2---配置环境变量&quot;&gt;2.   配置环境变量&lt;/h3&gt;
+
+&lt;pre&gt;&lt;code&gt;    $vim /etc/profile
+        export HADOOP_HOME=/usr/local/hadoop
+        export HADOOP_COMMON_LIB_NATIVE_DIR=/lib/native
+        export HADOOP_CONF_DIR=$HADOOP_HOME/etc/hadoop
+        export HADOOP_MAPRED_HOME=$HADOOP_HOME
+        export HADOOP_COMMON_HOME=$HADOOP_HOME
+        export HADOOP_HDFS_HOME=$HADOOP_HOME
+        export CLASSPATH=$($HADOOP_HOME/bin/hadoop classpath):$CLASSPATH
+        export PATH=$JAVA_HOME/bin:$HADOOP_HOME/bin:$PATH
+    $source /etc/profile
+&lt;/code&gt;&lt;/pre&gt;
+&lt;h3 id=&quot;3---配置hadoop的配置文件&quot;&gt;3.   配置hadoop的配置文件&lt;/h3&gt;
+
+&lt;p&gt;文件都在：/usr/local/hadoop/etc/hadoop路径下&lt;/p&gt;
+&lt;h4 id=&quot;配置core-sitexml文件&quot;&gt;配置core-site.xml文件&lt;/h4&gt;
+
+&lt;pre&gt;&lt;code&gt;    $cd /usr/local/hadoop/etc/hadoop
+    &amp;lt;configuration&amp;gt;
+        &amp;lt;property&amp;gt;
+            &amp;lt;name&amp;gt;hadoop.tmp.dir&amp;lt;/name&amp;gt;
+            &amp;lt;value&amp;gt;file:/usr/local/hadoop/tmp&amp;lt;/value&amp;gt;
+            &amp;lt;description&amp;gt;hadoop数据存储的临时文件夹。&amp;lt;/description&amp;gt;
+        &amp;lt;/property&amp;gt;
+        &amp;lt;property&amp;gt;
+            &amp;lt;name&amp;gt;fs.defaultFS&amp;lt;/name&amp;gt;
+            &amp;lt;value&amp;gt;hdfs://hadoop-master:9000&amp;lt;/value&amp;gt;
+            &amp;lt;description&amp;gt;指定NameNode的IP地址和端口号&amp;lt;/description&amp;gt;
+        &amp;lt;/property&amp;gt;
+    &amp;lt;/configuration&amp;gt;
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;坑：如没有配置hadoop.tmp.dir参数，系统默认的临时目录为：/tmp/{$user}。而这个目录在每次重启后都会被删除，必须重新执行format才行，否则会出错。&lt;/p&gt;
+
+&lt;h4 id=&quot;配置hdfs-sitexml&quot;&gt;配置hdfs-site.xml&lt;/h4&gt;
+&lt;p&gt;这个是hdfs的核心配置文件&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;    $cd /usr/local/hadoop/etc/hadoop
+    &amp;lt;configuration&amp;gt;
+    &amp;lt;property&amp;gt;
+        &amp;lt;name&amp;gt;dfs.replication&amp;lt;/name&amp;gt;
+        &amp;lt;value&amp;gt;3&amp;lt;/value&amp;gt;
+        &amp;lt;description&amp;gt;指定副本冗余&amp;lt;/description&amp;gt;
+    &amp;lt;/property&amp;gt;
+    &amp;lt;property&amp;gt;
+        &amp;lt;name&amp;gt;dfs.name.dir&amp;lt;/name&amp;gt;
+        &amp;lt;value&amp;gt;/usr/local/hadoop/hdfs/name&amp;lt;/value&amp;gt;
+        &amp;lt;description&amp;gt;namenode节点的文件存储目录&amp;lt;/description&amp;gt;
+    &amp;lt;/property&amp;gt;
+    &amp;lt;property&amp;gt;
+        &amp;lt;name&amp;gt;dfs.data.dir&amp;lt;/name&amp;gt;
+        &amp;lt;value&amp;gt;/usr/local/hadoop/hdfs/data&amp;lt;/value&amp;gt;
+        &amp;lt;description&amp;gt;datanode节点的文件存储目录&amp;lt;/description&amp;gt;
+    &amp;lt;/property&amp;gt;
+&amp;lt;/configuration&amp;gt;
+    
+&lt;/code&gt;&lt;/pre&gt;
+&lt;h4 id=&quot;配置mapred-sitexml&quot;&gt;配置mapred-site.xml&lt;/h4&gt;
+&lt;p&gt;这个是mapreduce的核心配置文件&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;    $cd /usr/local/hadoop/etc/hadoop
+    $cp /usr/local/hadoop/etc/hadoop/mapred-site.xml.template /usr/local/hadoop/etc/hadoop/mapred-site.xml  
+    $vim /usr/local/hadoop/etc/hadoop/mapred-site.xml
+    &amp;lt;configuration&amp;gt;
+      &amp;lt;property&amp;gt;
+          &amp;lt;name&amp;gt;mapreduce.framework.name&amp;lt;/name&amp;gt;
+          &amp;lt;value&amp;gt;yarn&amp;lt;/value&amp;gt;
+      &amp;lt;/property&amp;gt;
+       &amp;lt;property&amp;gt;
+          &amp;lt;name&amp;gt;mapred.job.tracker&amp;lt;/name&amp;gt;
+          &amp;lt;value&amp;gt;http://hadoop-master:9001&amp;lt;/value&amp;gt;
+      &amp;lt;/property&amp;gt;
+    &amp;lt;/configuration&amp;gt;
+&lt;/code&gt;&lt;/pre&gt;
+&lt;h4 id=&quot;配置yarn-sitexml&quot;&gt;配置yarn-site.xml&lt;/h4&gt;
+&lt;p&gt;这个是hadoop2.x后的资源协调组件,将原本Mapreduce的JobTracker哦那个能拆分，交由ResourceManager进行资源管理、ApplicationMater进行任务调度和监控、NodeManaer执行TaskTracker任务。&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;    &amp;lt;configuration&amp;gt;
+    &amp;lt;!-- Site specific YARN configuration properties --&amp;gt;
+        &amp;lt;property&amp;gt;
+            &amp;lt;name&amp;gt;yarn.nodemanager.aux-services&amp;lt;/name&amp;gt;
+            &amp;lt;value&amp;gt;mapreduce_shuffle&amp;lt;/value&amp;gt;
+        &amp;lt;/property&amp;gt;
+        &amp;lt;property&amp;gt;
+            &amp;lt;name&amp;gt;yarn.resourcemanager.hostname&amp;lt;/name&amp;gt;
+            &amp;lt;value&amp;gt;hadoop-master&amp;lt;/value&amp;gt;
+        &amp;lt;/property&amp;gt;
+    &amp;lt;/configuration&amp;gt;
+&lt;/code&gt;&lt;/pre&gt;
+&lt;h4 id=&quot;配置master文件&quot;&gt;配置master文件&lt;/h4&gt;
+&lt;p&gt;该文件指定namenode节点所在的服务器机器。删除localhost，添加namenode节点的主机名hadoop-master；&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;    $vim /usr/local/hadoop/etc/hadoop/masters
+    hadoop-master
+&lt;/code&gt;&lt;/pre&gt;
+&lt;h4 id=&quot;配置slaves文件master主机特有&quot;&gt;配置slaves文件（Master主机特有）&lt;/h4&gt;
+&lt;p&gt;指定哪些服务器节点是datanode节点。&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;    $vim /usr/local/hadoop/etc/hadoop/slaves
+    hadoop-slave1
+    hadoop-slave2
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;将hadoop目录远程复制给从节点，删除slaves文件&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;    $scp -r /usr/local/hadoop hadoop-slave1:/usr/local/
+    $ssh hadoop-slave1
+    $rm -rf /usr/local/hadoop/etc/hadoop/slaves
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;分别给从节点配置环境变量&lt;/p&gt;
+
+&lt;h2 id=&quot;集群启动与使用&quot;&gt;集群启动与使用&lt;/h2&gt;
+&lt;p&gt;格式化hdfs文件系统，第一次启动服务前执行的操作，以后不需要执行。作用是把原来HDFS中的数据全部清空，然后再格式化并安装一个全新的hdfs。&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;    $cd /usr/local/hadoop
+    $.bin/hadoop namenode -format
+    
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;这样以后就可以启动hadoop集群了&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;    $./sbin/start-all.sh
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;通过jps查看集群启动情况&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;    #master
+    14563 NameNode
+    14788 SecondaryNameNode
+    21544 Jps
+    14972 ResourceManager
+    #slave
+    10232 DataNode
+    10393 NodeManager
+    12655 Jps
+&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;坑：注意要关闭iptables&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;http://kkxcx.hutwanghui.club/keng3.png&quot; alt=&quot;image&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;至此，hadoop分布式搭建就完成了，可以通过hdfs命令和hdfsadmin命令对hdfs进行操作&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;http://kkxcx.hutwanghui.club/hdfs-complated.png&quot; alt=&quot;image&quot; /&gt;&lt;/p&gt;
+
+</description>
+        <pubDate>Sat, 16 Jun 2018 00:00:00 +0800</pubDate>
+        <link>http://www.hutwanghui.club/%E5%A4%A7%E6%95%B0%E6%8D%AE/2018/06/16/Hadoop-%E5%88%86%E5%B8%83%E5%BC%8F%E6%90%AD%E5%BB%BA-wanghui.html</link>
+        <guid isPermaLink="true">http://www.hutwanghui.club/%E5%A4%A7%E6%95%B0%E6%8D%AE/2018/06/16/Hadoop-%E5%88%86%E5%B8%83%E5%BC%8F%E6%90%AD%E5%BB%BA-wanghui.html</guid>
+        
+        <category>Hadoop</category>
+        
+        <category>Linux</category>
+        
+        
+        <category>大数据</category>
+        
+      </item>
     
       <item>
         <title>test</title>
